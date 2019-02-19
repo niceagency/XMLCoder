@@ -73,6 +73,11 @@ open class XMLEncoder {
 
         /// Encoded the `String` as a CData-encoded string.
         case cdata
+
+        /// Encode the `String` as a custom value encoded by the given closure.
+        ///
+        /// If the closure fails to encode a value into the given encoder, the encoder will defer.
+        case custom((String) throws -> String)
     }
 
     /// The strategy to use for encoding `Data` values.
@@ -335,9 +340,8 @@ open class XMLEncoder {
             ))
         }
 
-        let withCDATA = stringEncodingStrategy != .deferredToString
         return element.toXMLString(with: header,
-                                   withCDATA: withCDATA,
+                                   withStringEncodingStrategy: stringEncodingStrategy,
                                    formatting: outputFormatting)
             .data(using: .utf8, allowLossyConversion: true)!
     }

@@ -99,19 +99,19 @@ struct XMLCoderElement: Equatable {
     }
 
     func toXMLString(with header: XMLHeader? = nil,
-                     withCDATA cdata: Bool,
+                     withStringEncodingStrategy strategy: XMLEncoder.StringEncodingStrategy,
                      formatting: XMLEncoder.OutputFormatting,
                      ignoreEscaping _: Bool = false) -> String {
         if let header = header, let headerXML = header.toXML() {
-            return headerXML + _toXMLString(withCDATA: cdata, formatting: formatting)
+            return headerXML + _toXMLString(withStringEncodingStrategy: strategy, formatting: formatting)
         }
-        return _toXMLString(withCDATA: cdata, formatting: formatting)
+        return _toXMLString(withStringEncodingStrategy: strategy, formatting: formatting)
     }
 
     private func formatUnsortedXMLElements(
         _ string: inout String,
         _ level: Int,
-        _ cdata: Bool,
+        _ stringEncodingStrategy: XMLEncoder.StringEncodingStrategy,
         _ formatting: XMLEncoder.OutputFormatting,
         _ prettyPrinted: Bool
     ) {
@@ -119,7 +119,7 @@ struct XMLCoderElement: Equatable {
             from: elements,
             into: &string,
             at: level,
-            cdata: cdata,
+            stringEncodingStrategy: stringEncodingStrategy,
             formatting: formatting,
             prettyPrinted: prettyPrinted
         )
@@ -128,13 +128,13 @@ struct XMLCoderElement: Equatable {
     fileprivate func elementString(
         for element: XMLCoderElement,
         at level: Int,
-        cdata: Bool,
+        stringEncodingStrategy: XMLEncoder.StringEncodingStrategy,
         formatting: XMLEncoder.OutputFormatting,
         prettyPrinted: Bool
     ) -> String {
         var string = ""
         string += element._toXMLString(
-            indented: level + 1, withCDATA: cdata, formatting: formatting
+            indented: level + 1, withStringEncodingStrategy: stringEncodingStrategy, formatting: formatting
         )
         string += prettyPrinted ? "\n" : ""
         return string
@@ -143,14 +143,14 @@ struct XMLCoderElement: Equatable {
     fileprivate func formatSortedXMLElements(
         _ string: inout String,
         _ level: Int,
-        _ cdata: Bool,
+        _ stringEncodingStrategy: XMLEncoder.StringEncodingStrategy,
         _ formatting: XMLEncoder.OutputFormatting,
         _ prettyPrinted: Bool
     ) {
         formatXMLElements(from: elements.sorted { $0.key < $1.key },
                           into: &string,
                           at: level,
-                          cdata: cdata,
+                          stringEncodingStrategy: stringEncodingStrategy,
                           formatting: formatting,
                           prettyPrinted: prettyPrinted)
     }
@@ -172,14 +172,14 @@ struct XMLCoderElement: Equatable {
         from elements: [XMLCoderElement],
         into string: inout String,
         at level: Int,
-        cdata: Bool,
+        stringEncodingStrategy: XMLEncoder.StringEncodingStrategy,
         formatting: XMLEncoder.OutputFormatting,
         prettyPrinted: Bool
     ) {
         for element in elements {
             string += elementString(for: element,
                                     at: level,
-                                    cdata: cdata,
+                                    stringEncodingStrategy: stringEncodingStrategy,
                                     formatting: formatting,
                                     prettyPrinted: prettyPrinted)
         }
@@ -212,23 +212,23 @@ struct XMLCoderElement: Equatable {
         _ formatting: XMLEncoder.OutputFormatting,
         _ string: inout String,
         _ level: Int,
-        _ cdata: Bool,
+        _ stringEncodingStrategy: XMLEncoder.StringEncodingStrategy,
         _ prettyPrinted: Bool
     ) {
         if formatting.contains(.sortedKeys) {
             formatSortedXMLElements(
-                &string, level, cdata, formatting, prettyPrinted
+                &string, level, stringEncodingStrategy, formatting, prettyPrinted
             )
             return
         }
         formatUnsortedXMLElements(
-            &string, level, cdata, formatting, prettyPrinted
+            &string, level, stringEncodingStrategy, formatting, prettyPrinted
         )
     }
 
     private func _toXMLString(
         indented level: Int = 0,
-        withCDATA cdata: Bool,
+        withStringEncodingStrategy strategy: XMLEncoder.StringEncodingStrategy,
         formatting: XMLEncoder.OutputFormatting,
         ignoreEscaping: Bool = false
     ) -> String {
@@ -248,8 +248,14 @@ struct XMLCoderElement: Equatable {
                 string += ">"
             }
             if !ignoreEscaping {
-                string += (cdata == true ? "<![CDATA[\(value)]]>" :
-                    "\(value.escape(XMLCoderElement.escapedCharacterSet))")
+                switch strategy {
+                case .deferredToString:
+                    string += "\(value.escape(XMLCoderElement.escapedCharacterSet))"
+                case .cdata:
+                    string += "<![CDATA[\(value)]]>"
+                case .custom(let closure):
+                    string += (try? closure(value)) ?? "\(value.escape(XMLCoderElement.escapedCharacterSet))"
+                }
             } else {
                 string += "\(value)"
             }
@@ -259,7 +265,7 @@ struct XMLCoderElement: Equatable {
             }
         } else if !elements.isEmpty {
             string += prettyPrinted ? ">\n" : ">"
-            formatXMLElements(formatting, &string, level, cdata, prettyPrinted)
+            formatXMLElements(formatting, &string, level, strategy, prettyPrinted)
 
             string += indentation
             if !key.isEmpty {
