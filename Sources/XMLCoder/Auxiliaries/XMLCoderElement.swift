@@ -101,11 +101,15 @@ struct XMLCoderElement: Equatable {
     func toXMLString(with header: XMLHeader? = nil,
                      withStringEncodingStrategy strategy: XMLEncoder.StringEncodingStrategy,
                      formatting: XMLEncoder.OutputFormatting,
-                     ignoreEscaping _: Bool = false) -> String {
+                     ignoreEscaping: Bool = false) -> String {
         if let header = header, let headerXML = header.toXML() {
-            return headerXML + _toXMLString(withStringEncodingStrategy: strategy, formatting: formatting)
+            return headerXML + _toXMLString(withStringEncodingStrategy: strategy,
+                                            formatting: formatting,
+                                            ignoreEscaping: ignoreEscaping)
         }
-        return _toXMLString(withStringEncodingStrategy: strategy, formatting: formatting)
+        return _toXMLString(withStringEncodingStrategy: strategy,
+                            formatting: formatting,
+                            ignoreEscaping: ignoreEscaping)
     }
 
     private func formatUnsortedXMLElements(
