@@ -314,7 +314,7 @@ open class XMLEncoder {
     /// floating-point value is encountered during encoding, and the encoding
     /// strategy is `.throw`.
     /// - throws: An error if any value throws an error during encoding.
-    open func encode<T: Encodable>(_ value: T, withRootKey rootKey: String, header: XMLHeader? = nil) throws -> Data {
+    open func encode<T: Encodable>(_ value: T, withRootKey rootKey: String, header: XMLHeader? = nil, ignoreEscaping: Bool = false) throws -> Data {
         let encoder = XMLEncoderImplementation(
             options: options,
             nodeEncodings: []
@@ -342,7 +342,8 @@ open class XMLEncoder {
 
         return element.toXMLString(with: header,
                                    withStringEncodingStrategy: stringEncodingStrategy,
-                                   formatting: outputFormatting)
+                                   formatting: outputFormatting,
+                                   ignoreEscaping: ignoreEscaping)
             .data(using: .utf8, allowLossyConversion: true)!
     }
 }
